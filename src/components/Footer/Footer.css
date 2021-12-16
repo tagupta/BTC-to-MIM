@@ -1,0 +1,13 @@
+.css-1ee5err-MuiButtonBase-root-MuiBottomNavigationAction-root.Mui-selected {
+    color: #b406c4 !important;
+}
+
+.MuiBox-root{
+    display: contents;
+}
+
+.details{
+    text-align: center;
+    display: block;
+    padding: 1.5rem;
+}

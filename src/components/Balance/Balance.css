@@ -1,0 +1,40 @@
+.mainDiv{
+    margin-top: 30px;
+    padding: 1.5rem;
+    width: 40%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    box-shadow: 1px 1px 11px 0px #b406c4;
+}
+
+.Div{
+    display : flex;
+}
+
+.H5{
+    text-align: center;
+    padding-bottom: 1.5rem; 
+}
+
+.depositAmt .withdrawAmt{
+    text-align: center;
+    color: #b406c4;
+}
+
+.buttonDiv{
+    margin-top: 1.5rem;
+}
+
+.alertClass{
+    text-align: center;
+    justify-content: center;
+    margin: auto;
+    width: 60%;
+}
+
+.maxButton:hover{
+    background-color: #b406c4 !important;
+    color: white;
+}
+
