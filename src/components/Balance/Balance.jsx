@@ -7,7 +7,7 @@ import Alert from '@mui/material/Alert';
 import { Container } from '@mui/material';
 import './Balance.css';
 
-const CssTextField = styled(TextField )({
+const CssTextField = styled(TextField)({
     '& label.Mui-focused': {
     color: '#b406c4',
     },
@@ -52,14 +52,14 @@ export default class Balance extends Component {
     }
 
     handleWithdraw = () =>{
-       console.log("Inside withdraw: "+ this.textInput.current.value);
+       //console.log("Inside withdraw: "+ this.textInput.current.value);
        this.props.withdraw(this.textInput.current.value).catch(this.props.logError)
     }
 
     handleClick = async(e) => {
         e.preventDefault();
         await this.props.handleMax();
-        this.textInput.current.value = this.props.renBTC;
+        this.textInput.current.value = this.props.mimBorrow;
         console.log("this.textInput.current.value: " + this.textInput.current.value);
     }
     closeAlert = () => {
@@ -73,7 +73,7 @@ export default class Balance extends Component {
             { showAlert ? <Alert severity="error" className='alertClass' onClose={this.closeAlert}>{errorMsg}</Alert> : null }
                 <div className='justify-content-around Div'>
                     <div className='mainDiv'>
-                      <h5 className='H5'>Deposit BTC</h5>
+                      <h5 className='H5'>Deposit BTC to Borrow MIM</h5>
                       <div style = {{ justifyContent: "space-evenly",
                                       display: 'flex'}}>
                       <CssTextField label="Enter Amount" 
@@ -92,14 +92,14 @@ export default class Balance extends Component {
                     </div>
 
                    <div className='mainDiv'>
-                        <h5 className='H5'>Withdraw BTC</h5>
+                        <h5 className='H5'>Repay MIM to Withdraw BTC</h5>
                         <div style= {{display: 'flex',justifyContent: 'center'}}>
                         <CssTextField   inputRef={this.textInput}
                                         label="Enter Amount" 
                                         className="withdrawAmt"
                                         type="number" 
                                         size="small"
-                                        defaultValue={this.props.renBTC}
+                                        defaultValue={this.props.mimBorrow}
                                         style = {{marginRight: '0.5rem'}}  />
                     
                         <Button variant="outlined" className='maxButton'
@@ -120,18 +120,3 @@ export default class Balance extends Component {
         )
     }
 }
-
-
-
-// class="MuiInputLabel-root 
-        //   MuiInputLabel-formControl 
-        //   MuiInputLabel-animated 
-        //   MuiInputLabel-sizeSmall 
-        //   MuiInputLabel-outlined 
-        //   MuiFormLabel-root 
-        //   MuiFormLabel-colorPrimary 
-        //   css-1pysi21-MuiFormLabel-root-MuiInputLabel-root"
-
-
-        // MuiInputLabel-shrink
-        // Mui-focused

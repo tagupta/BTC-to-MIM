@@ -19,7 +19,7 @@ export default class Header extends Component {
             <AppHeader>
             <div style={{display: "contents"}}>
                 <CoffeeMakerOutlinedIcon sx={{ fontSize: 40 }}/>   
-                <h3><strong>Brew BTC to get CRV</strong></h3>              
+                <h3><strong>Brew BTC to get MIM</strong></h3>              
             </div>
             </AppHeader>
         )

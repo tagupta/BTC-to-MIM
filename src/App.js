@@ -5,46 +5,68 @@ import Backdrop from '@mui/material/Backdrop';
 import CircularProgress from '@mui/material/CircularProgress';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import styled from 'styled-components';
-
+import BigNumber from 'bignumber.js';
 import RenJS from "@renproject/ren";
 import { Bitcoin, Ethereum } from "@renproject/chains";
 import {utils} from 'ethers';
+import {ethers} from 'ethers';
+
 
 import ABI from "./json/ABI.json"; //json of basic contract
 import RENERC20 from "./json/RenERC20.json";
 import MoneyToCurve from './json/MoneytoCurve.json';
+import Booster from './json/Booster.json';
+import MIM from './json/MIM.json';
 
+import Welcome from './components/Welcome/Welcome';
 import Header from './components/Header/Header';
 import Balance from './components/Balance/Balance';
 import Message from './components/Message/Message';
 import Footer from './components/Footer/Footer';
 
-const contractAddress = "0xbdfdDa6842E8F3d18BE52d558a07dc69004d7e6C"; // basic contract
+const contractAddress = "0x0095B4DAc18654bc59c38943feE47C92c51C6D62"; // basic contract
 ///const curveCRVAddress = "0x6C0aF5282BE21338BcCB2A78fE516EA8A3530d35";
-const defiAddress  = "0x0853bcC18a24036e4C3BFbff576401282CD26D24";
-const wBTCAddress = "0x90b5d4793552885686dA58289a0507D584Fde8FB";
+//const owner = "0x9C87885Dfe734F274Da768EC985768C483BB89fa";
+const defiAddress  = "0x5CA2B97161Fa8184D18ebB74838ed46eD3A3B2bF";
+const wBTCAddress = "0x87F922881dA425220CC99F79A65D9C643912530E";
+const cauldronAddress = "0xc69055B7E0FC1a00A6Ac426999bcb9FCc1B8B16f"
+const mimAddress = "0xd8e49E22C250B71aB479f93b6a95eA0dA575B758";
+const boosterAddress = "0xf0E16a8914F0a93aD97D1165c4EBd726A30961B6";
 
 const AppDiv = styled.div`
 font-family: monospace;
 color: #b406c4;
 `;
 
-const toFixed = (x) => {
-  if (Math.abs(x) < 1.0) {
-    var e = parseInt(x.toString().split('e-')[1]);
-    if (e) {
-        x *= Math.pow(10,e-1);
-        x = '0.' + (new Array(e)).join('0') + x.toString().substring(2);
-    }
-  } else {
-    var ee = parseInt(x.toString().split('+')[1]);
-    if (ee > 20) {
-        ee -= 20;
-        x /= Math.pow(10,ee);
-        x += (new Array(ee+1)).join('0');
-    }
+function addZeroToString(str1, str2){
+  while (str1.length > str2.length) {
+      str2 = "0" + str2;
   }
-  return x;
+  return str2;
+}
+
+function addTwoBigNumbers(a, b) {
+  if (a.length > b.length) {
+      b = addZeroToString(a,b);
+  } else {
+      a = addZeroToString(b,a);
+  }
+  var a1 = a.split("");
+  let sum = 0;
+  let carry = 0;
+  let array = [];
+  for (var i = a1.length-1; i >= 0; i--) {
+      sum = parseInt(a[i]) + parseInt(b[i]) + parseInt(carry);
+      if (sum >= 10) {
+          carry = 1;
+          sum = sum - 10;
+      } else {
+          carry = 0;
+      }
+      array.push(sum);
+  }
+  array.reverse().join("");
+  return array.join("");
 }
 
 class App extends React.Component{
@@ -59,6 +81,7 @@ class App extends React.Component{
       disableWithdraw: true,
       maxDeposit: 0,
       userShare: "",
+      openDetails: true,
     };
   }
   
@@ -89,19 +112,19 @@ class App extends React.Component{
     }
   
     this.setState({web3, address}, () => {
-      this.updateBalance();
+      this.updates();
     });
   }
 
-  updateBalance = async () => {
+  updates = async () => {
    
-    const {web3,address} = this.state;
+    const {web3} = this.state;
     const basicContract = new web3.eth.Contract(ABI, contractAddress);
     const renAddress = await basicContract.methods.getRenERC20().call();
   
     this.setState({renAddress , basicContract});
     console.log("renBTCAddress: "+ renAddress);
-    this.log("Connected Account: "+ address);
+    //this.log("Connected Account: "+ address);
   }
 
   handleTBTCBalance = async () => {
@@ -177,7 +200,7 @@ class App extends React.Component{
             else {
               this.log('BTCs on ETH are minted');
               //here's the logic for depositing renBTC to curve
-              this.mintingCRV();
+              this.mintingMIM();
             }
           })
         } else {
@@ -189,11 +212,12 @@ class App extends React.Component{
     });
   }
 
-  mintingCRV = async () => {
+  mintingMIM = async () => {
     const { address, web3, renAddress, basicContract } = this.state;
     const renBTC = await new web3.eth.Contract(RENERC20, renAddress,{from: address});
     const wBTC = await new web3.eth.Contract(RENERC20, wBTCAddress, {from: address});
     const renBTCToCRV = await new web3.eth.Contract(MoneyToCurve,defiAddress,{from:address});
+    const booster = await new web3.eth.Contract(Booster,boosterAddress,{from: address});
 
     var renBalance = await basicContract.methods.userBalance(address).call();
     var _renBalance = 0;
@@ -232,13 +256,43 @@ class App extends React.Component{
           }
           else{ 
             this.log(`Deposited ${_renBalance/10 ** 8} renBTC.`);
+          }
+        });
+
+        var _pool = await booster.methods.poolInfo(0).call();
+        var mimCollateral = _pool.token;
+
+        //Here the calling of cook funcion for abracadabra for borrowing MIM
+        var cvxrencrvBalance = await renBTCToCRV.methods.cvxrencrvDeposits(address).call();
+        //1 MIM = 1 USD
+        //1 cvxrencrv = 42304.3455 MIM
+        // Borrow balance for 25% collateralization ratio
+        var mim_borrow = web3.utils.fromWei(cvxrencrvBalance.toString(),'ether') * 42304.3455 * 0.25;
+        //ACTION_BENTO_SETAPPROVAL
+        var data_0 = ethers.utils.defaultAbiCoder.encode( ["address","address", "bool"],[defiAddress, cauldronAddress, true]);
+        //ACTION_BORROW
+        var data_1 = ethers.utils.defaultAbiCoder.encode(["int256","address"],[web3.utils.toWei(mim_borrow.toString(),'ether'), defiAddress]);
+        //ACTION_BENTO_WITHDRAW
+        var data_2 = ethers.utils.defaultAbiCoder.encode(["address","address","int256","int256"],[mimAddress, defiAddress,web3.utils.toWei(mim_borrow.toString(),'ether'),0]);
+        //ACTION_BENTO_DEPOSIT
+        var data_3 = ethers.utils.defaultAbiCoder.encode(["address","address","int256","int256"],[mimCollateral, defiAddress,(cvxrencrvBalance).toString(),0]);
+        //ACTION_ADD_COLLATERAL
+        var data_4 = ethers.utils.defaultAbiCoder.encode(["int256","address","bool"],[1,defiAddress,false]);
+        
+        await renBTCToCRV.methods.cookCalling([24,5,21,20,10],[0,0,0,0,0],[data_0,data_1,data_2,data_3,data_4],false,0).send({from: address,value: 0},(error, txHash) => {
+          if(error){
+            this.logError(error);
             this.handleClose();
+          }
+          else{
+            this.log('MIM deposited in your account');
           }
         });
 
       }
       console.log("time: "+ time);
     }, 1000);
+    this.handleClose();
   }
 
   withdraw = async(withdrawalAmt) =>{
@@ -247,19 +301,62 @@ class App extends React.Component{
 
     const { address, web3, renAddress, renJS } = this.state;
     const renBTCToCRV = await new web3.eth.Contract(MoneyToCurve,defiAddress,{from:address});
-    const maxDeposit = await renBTCToCRV.methods.rbtcDeposits(address).call();
+    const mim = await new web3.eth.Contract(MIM,mimAddress,{from: address});
+    const booster = await new web3.eth.Contract(Booster,boosterAddress,{from: address});
 
-    if(withdrawalAmt <= (maxDeposit/10 ** 8)){
-      withdrawalAmt = withdrawalAmt * (10 ** 8);
+    var mimBorrowed = await renBTCToCRV.methods.mimBorrowed(address).call();
+    var _mimBorrowed = addTwoBigNumbers(mimBorrowed.toString(),(1 * 10 ** 18).toString());
+    const maxDeposit = await renBTCToCRV.methods.rbtcDeposits(address).call();
+    var _pool = await booster.methods.poolInfo(0).call();
+    var mimCollateral = _pool.token;
+
+    var cvxrencrvBalance = await renBTCToCRV.methods.cvxrencrvDeposits(address).call();
+    var userMIMBalance = await mim.methods.balanceOf(address).call();
+
+    if(withdrawalAmt >= (_mimBorrowed/10 ** 18) && withdrawalAmt <= (userMIMBalance/10**18)){
+      withdrawalAmt = withdrawalAmt * (10 ** 18);
      
       if(withdrawalAmt > 0){
-        await renBTCToCRV.methods.multiStepWithdraw([withdrawalAmt.toString(),"0"]).send({from: address},(error,txHash)=>{
+
+        await mim.methods.approve(defiAddress,_mimBorrowed).send({from: address},(error, txHash) => {
           if(error){
             this.logError(error);
             this.handleClose();
           }
           else{
-            this.log(`Liquidity ${withdrawalAmt} extracted is.`);
+            this.log(`Approving Dapp to use your MIM: 1/2`);
+          }
+        });
+
+        //ACTION_BENTO_DEPOSIT
+        var data_0 = ethers.utils.defaultAbiCoder.encode(["address","address","int256","int256"],[mimAddress,defiAddress,(_mimBorrowed).toString(),0]);
+        
+        //ACTION_REPAY
+        var data_1 = ethers.utils.defaultAbiCoder.encode(["int256","address","bool"],[(mimBorrowed).toString(),defiAddress,false]);
+      
+        //ACTION_REMOVE_COLLATERAL
+        var data_2 = ethers.utils.defaultAbiCoder.encode(["int256","address"],[1,defiAddress]);
+        
+        //ACTION_BENTO_WITHDRAW
+        var data_3 = ethers.utils.defaultAbiCoder.encode(["address","address","int256","int256"],[mimCollateral,defiAddress,(cvxrencrvBalance).toString(),0]);
+
+        await renBTCToCRV.methods.cookCalling([20,2,4,21],[0,0,0,0],[data_0,data_1,data_2,data_3],true,(_mimBorrowed).toString()).send({from: address, value: 0},(error, txHash) => {
+          if(error){
+            this.logError(error);
+            this.handleClose();
+          }
+          else{
+            this.log(`MIM extracted from your wallet`);
+          }
+        });
+
+        await renBTCToCRV.methods.multiStepWithdraw([maxDeposit.toString(),"0"]).send({from: address},(error,txHash)=>{
+          if(error){
+            this.logError(error);
+            this.handleClose();
+          }
+          else{
+            this.log(`Liquidity ${maxDeposit} is extracted.`);
           }
         });
       }
@@ -270,18 +367,18 @@ class App extends React.Component{
       }
       
       const renBTC = await new web3.eth.Contract(RENERC20, renAddress,{from: address});
-      await renBTC.methods.approve(contractAddress, withdrawalAmt).send({from:address},(error,txHash)=>{
+      await renBTC.methods.approve(contractAddress, maxDeposit).send({from:address},(error,txHash)=>{
         if(error){
           this.logError(error);
           this.handleClose();
         }
         else{
-          this.log('Approval: 1/1');
+          this.log('Approval: 2/2');
         }
       });
   
       const recipient = prompt("Enter BTC recipient:");
-      const amount = withdrawalAmt / (10 ** 8);
+      const amount = maxDeposit / (10 ** 8);
   
       const burnAndRelease = await renJS.burnAndRelease({
         asset: "BTC",
@@ -365,75 +462,70 @@ class App extends React.Component{
     this.setState({isOpen: !isOpen});
   };
 
-  handleFetch = async () =>{
-    this.setState({isOpen: true});
-    const {address,web3} = this.state;
-    const renBTCToCRV = await new web3.eth.Contract(MoneyToCurve,defiAddress,{from:address});
-    // await renBTCToCRV.methods.crvTokenClaim().send((error,txHash) => {
-    //   if(error){
-    //     this.logError(error);
-    //     this.handleClose();
-    //     return;
-    //   }
-    //   else{
-    //     this.log("Calculating your share of CRVs");
-    //   }
-    // });
-
-    var crvResult = await renBTCToCRV.methods.fetchCRVShare().call({from: address});
-    const {0: ratio, 1: crvAmount} = crvResult;
-    var _ratio = ratio / 10**18;
-    var share = parseFloat((_ratio * crvAmount)/10**18);
-    this.setState({userShare: toFixed(share)});
-    this.handleClose();
-  };
-  
-  handleClaim = async () => {
-    this.setState({isOpen: true});
-    const {address,web3} = this.state;
-    const renBTCToCRV = await new web3.eth.Contract(MoneyToCurve,defiAddress,{from:address});
-    await renBTCToCRV.methods.claimCRV().send({from: address},(error,txHash) => {
-      if(error){
-        this.logError(error);
-        this.handleClose();
-      }
-      else{
-        this.log("Please check your wallet for CRVs");
-        this.handleClose();
-      }
-    });
-  }
-
   handleMax = async () => {
     this.setState({isOpen: true});
     const {address,web3} = this.state;
     const renBTCToCRV = await new web3.eth.Contract(MoneyToCurve,defiAddress,{from:address});
-    const max = await renBTCToCRV.methods.rbtcDeposits(address).call();
-    this.setState({maxDeposit: max/10 ** 8});
+    var mimBorrowed = await renBTCToCRV.methods.mimBorrowed(address).call();
+    var _mimBorrowed = addTwoBigNumbers(mimBorrowed.toString(),(1 * 10 ** 18).toString());
+    const max = _mimBorrowed
+    this.setState({maxDeposit: max/10 ** 18});
     this.handleClose();
   }
 
+  handleUserMimBalance = async () => {
+    const {address,web3} = this.state;
+    const mimm = await new web3.eth.Contract(MIM,mimAddress,{from: address});
+    var userMIMBalance = await mimm.methods.balanceOf(address).call();
+    var tokens = new BigNumber(userMIMBalance).dividedBy(10 ** 18);
+    this.setState({userMIMBalance: tokens.toPrecision(26)});
+  }
+
+  // handleExtraMinting = async() => {
+  //   const {address,web3} = this.state;
+  //   const mimm = await new web3.eth.Contract(MIM,mimAddress,{from: address});
+  //   await mimm.methods.__mint(address, web3.utils.toWei('100000000','ether')).send({from: address}, (error, txHash) => {
+  //     if(error){
+  //       this.logError(error);
+  //     }
+  //     else{
+  //       this.log('MIM minted for owner');
+  //     }
+  //   });
+  // }
+
+  handleDetails = (open) =>{
+    this.setState({openDetails: open});
+  }
+
   render = () => {
-    const { message, error, isOpen ,maxDeposit, userShare} = this.state;
+    const { message, error, isOpen ,maxDeposit, userShare, address,userMIMBalance,openDetails} = this.state;
     return (
       <AppDiv>
+        <Welcome openDetails={openDetails} 
+                 handleDetails={this.handleDetails}/>
         <Header/>
-        <Balance renBTC = {maxDeposit}
+        <Balance mimBorrow = {maxDeposit}
                  handleMax = {this.handleMax}
                  handleCRVBalance = {this.handleCRVBalance} 
                  deposit = {this.deposit}
                  withdraw = {this.withdraw}
-                 logError = {this.logError}
-                 /> 
+                 logError = {this.logError}/>
+
         <Message msg = {message} err = {error}/>
 
-        <Footer fetch={this.handleFetch} claim={this.handleClaim} userShare={userShare}/>
+        <Footer fetch={this.handleFetch} 
+                claim={this.handleClaim} 
+                userShare={userShare} 
+                userAddress={address}
+                userMIMBalance = {userMIMBalance}
+                handleUserMimBalance = {this.handleUserMimBalance}
+                handleDetails={this.handleDetails}/>
 
         <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
                   open={isOpen}>
           <CircularProgress color="inherit" />
         </Backdrop>
-          
       </AppDiv>
     );
   };

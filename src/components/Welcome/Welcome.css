@@ -1,0 +1,25 @@
+.css-bdhsul-MuiTypography-root-MuiDialogTitle-root{
+    font-family : monospace;
+}
+
+#alert-dialog-description{
+    font-family : monospace;
+}
+
+#modalTitle{
+    text-align: center;
+    line-height: 48px;
+    color: #b406c4;
+    font-family : monospace;
+}
+
+#buttonText{
+    color: #b406c4;
+}
+.MuiDialogContent-root .css-ypiqx9-MuiDialogContent-root {
+    font-family : monospace;
+}
+
+#buttonFooter{
+    justify-content: center;
+}
